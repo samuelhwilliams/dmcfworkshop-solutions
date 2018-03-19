@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% import "bootstrap/utils.html" as utils %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class="container">
+  <div class="jumbotron">
+    <h1>Your very own app</h1>
+  </div>
+  <h2>Configuration:</h2>
+  <table class="table table-striped table-bordered">
+    <thead>
+    <tr>
+      <th>Setting</th>
+      <th>Value</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+      <td>Application ID</td>
+      <td>{{ env.application_id }}</td>
+    </tr>
+    <tr>
+      <td>Application name</td>
+      <td>{{ env.application_name }}</td>
+    </tr>
+    <tr>
+      <td>Application URI</td>
+      <td>{{ ', '.join(env.application_uris) }}</td>
+    </tr>
+    <tr>
+      <td>Disk quota</td>
+      <td>{{ env.limits.disk }} MB</td>
+    </tr>
+    <tr>
+      <td>Memory quota</td>
+      <td>{{ env.limits.mem }} MB</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

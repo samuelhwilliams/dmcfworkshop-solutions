@@ -1,0 +1,10 @@
+---
+applications:
+- name: sw-api
+  path: api
+  routes:
+    - route: sw-api.cloudapps.digital
+  health-check-type: http
+  health-check-http-endpoint: /_status
+  path: api
+  command: FLASK_APP=run.py flask run --port $PORT --host 0.0.0.0

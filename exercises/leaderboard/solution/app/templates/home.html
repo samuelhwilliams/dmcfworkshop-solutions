@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% import "bootstrap/utils.html" as utils %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block content %}
+<div class="container">
+  <div class="jumbotron">
+    <h1 class="text-center">Leaderboard</h1>
+  </div>
+  <table class="table table-bordered table-striped table-hover">
+    <thead>
+      <th class="text-right">Player</th>
+      {% for i in range(0, exercise_finishers|length) %}
+      <th class="text-right">Exercise {{ loop.index }}</th>
+      {% endfor %}
+    </thead>
+    <tbody>
+      {% for player in players %}
+      <tr id="{{ player }}-row">
+        <td class="text-right">{{ players_names[loop.index0] }}</td>
+        {% for finishers in exercise_finishers %}
+        <td id="{{ player }}-exercise-{{ loop.index }}"
+            class="text-right column-{{ loop.index }}{% if exercise_running_times[loop.index0] == -1 %} success{% elif first_finishers[loop.index0] == player %} warning{% elif player in finishers.keys() %} success{% endif %}"
+            data-seconds="{% if player in finishers.keys() %}{{ finishers[player] }}{% elif exercise_running_times[loop.index0] > 0 %}{{ exercise_running_times[loop.index0] }}{% else %}0{% endif %}"></td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io.slim.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.20.1/moment.min.js"></script>
+<script>
+  exercises = { {% for exercise in exercise_running_times %}'{{ loop.index }}': {% if exercise %}true{% else %}false{% endif %}, {% endfor %} };
+  
+  var hasFinished = function(player, exercise) {
+    $elem = $('.' + player + '-exercise-' + exercise);
+    return $elem.hasClass('success') || $elem.hasClass('warning');
+  };
+  
+  var updateTicker = function () {
+    for (exercise in exercises) {
+      if (exercises[exercise] === true) {
+        $('.column-' + exercise).each(function (idx) {
+          if (!$(this).hasClass('success') && !$(this).hasClass('warning')) {
+            this.dataset.seconds = parseInt(this.dataset.seconds) + 1;
+            this.dataset.stale = true;
+          } else if (this.dataset.seconds > 0 && this.innerHTML == '') {
+            this.dataset.stale = true;
+          }
+        });
+      }
+    };
+  };
+  
+  var updateText  = function () {
+    for (exercise in exercises) {
+      if (exercises[exercise] === true) {
+        $('.column-' + exercise).each(function (idx) {
+          if (this.dataset.stale === 'true') {
+            delete this.dataset.stale;
+            this.innerHTML = moment().startOf('day').seconds(parseInt(this.dataset.seconds)).format('HH:mm:ss')
+          }
+        });
+      } else {
+        $('.column-' + exercise).each(function (idx) {
+          if (parseInt(this.dataset.seconds) > 0 && this.dataset.stale === 'true') {
+            delete this.dataset.stale;
+            this.innerHTML = moment().startOf('day').seconds(parseInt(this.dataset.seconds)).format('HH:mm:ss')
+          }
+        });
+      };
+    };
+  };
+  
+  var exerciseTimer = setInterval(updateTicker, 1000);
+  var textUpdater = setInterval(updateText, 100);
+  
+  
+  var socket = io.connect('//' + document.domain + ':' + location.port);
+    socket.on('complete', function(data) {
+      console.log(data);
+      for (player in data.completed_by) {
+        if (Object.keys(data.completed_by).length === 1 && data.completion_time > 0) {
+          console.log('#' + player + '-exercise-' + data.exercise);
+          var $tmp = $('#' + player + '-exercise-' + data.exercise);
+          $tmp.addClass('warning');
+          $tmp.innerHTML = moment().startOf('day').seconds(parseInt(data.completion_time)).format('HH:mm:ss');
+        } else {
+          if (!hasFinished(player, data.exercise)) {
+            console.log('#' + player + '-exercise-' + data.exercise);
+            var $tmp = $('#' + player + '-exercise-' + data.exercise);
+            $tmp.addClass('success');
+            $tmp.innerHTML = moment().startOf('day').seconds(parseInt(data.completion_time)).format('HH:mm:ss');
+          }
+        };
+      }
+    });
+    socket.on('start', function(data) {
+      exercises[data.exercise] = true;
+      console.log(data);
+    });
+    socket.on('stop', function(data) {
+      exercises[data.exercise] = false;
+      console.log(data);
+      $('column-' + exercise).not('.warning').addClass('success');
+    });
+</script>
+<script>
+</script>
+{% endblock %}

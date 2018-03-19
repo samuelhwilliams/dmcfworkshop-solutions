@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block navbar %}
+{{ nav.admin_top.render() }}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  {% include "_flashes.html" %}
+  
+  <div class="jumbotron">
+    <h1>Secure admin interface</h1>
+  </div>
+  
+  {% if form %}
+    <h2 class="text-primary">Create account</h2>
+    {{ wtf.quick_form(form) }}
+  {% else %}
+    <h2 class="text-danger">Oh, dear</h2>
+    <p>There doesn't seem to be a connection to a postgres database available.</p>
+    <p>Surely there must be a way to fix this.</p>
+  {% endif %}
+</div>
+{% endblock %}

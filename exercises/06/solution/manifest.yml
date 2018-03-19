@@ -1,0 +1,11 @@
+applications:
+- name: <INITIALS>-app
+  route:
+    - <INITIALS>-app.cloudapps.digital
+  instances: 1
+  memory: 128M
+  disk_quota: 256M
+  docker:
+    image: digitalmarketplace/dmcfworkshop:exercise-06
+  health-check-type: http
+  health-check-http-endpoint: /_status

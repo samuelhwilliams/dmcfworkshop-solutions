@@ -1,0 +1,65 @@
+#!/bin/bash
+
+if [[ -z $DMCF_USERS ]]; then
+  echo "You must set the \$DMCF_USERS environment variable."
+  exit 1
+fi
+
+function get_users() {
+  echo $DMCF_USERS | tr ',' '\n'
+}
+
+function setup() {
+  echo "Setting up exercise four ..."
+  cf target -s sandbox
+  
+  for user in $(get_users); do
+    echo "Setting up lab for ${user} ..."
+    cf push "${user}-app" -p app -f <(cat app/manifest.yml | sed "s/@DMCF_USERNAME/${user}/g") --no-start &
+  done
+
+  wait
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/start?exercise=4"
+
+  for user in $(get_users); do
+    echo "Blocking ssh ${user} ..."
+    cf disable-ssh "${user}-app" &
+  done
+}
+
+function teardown() {
+  echo "Tearing down exercise four ..."
+  cf target -s sandbox
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/stop?exercise=4"
+
+  echo "Tearing down apps ..."
+  for user in $(get_users); do
+
+    for app in $(cf apps | egrep -i "^${user}[^\s]" | cut -f 1 -d ' '); do
+      cf delete -r -f "${app}" &
+    done
+  done
+
+  wait
+
+  echo "Tearing down services ..."
+  for user in $(get_users); do
+    for service in $(cf services | egrep -i "^${user}[^\s]" | cut -f 1 -d ' '); do
+      cf delete-service -f $service &
+    done
+  done
+
+  wait
+
+  echo "Done."
+}
+
+ARG=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+
+case $ARG in
+  setup) setup;;
+  teardown) teardown;;
+  *) echo "Unknown command. Choose from: setup, teardown.";;
+esac

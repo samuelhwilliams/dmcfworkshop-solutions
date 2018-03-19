@@ -1,0 +1,58 @@
+#!/bin/bash
+
+if [[ -z $DMCF_USERS ]]; then
+  echo "You must set the \$DMCF_USERS environment variable."
+  exit 1
+fi
+
+function get_users() {
+  echo $DMCF_USERS | tr ',' '\n'
+}
+
+function random_three_words() {
+  echo $(python -c 'import os, random; infile=open("/usr/share/dict/words"); words=infile.read().split("\n"); print("-".join([random.choice(words).lower() for x in range(3)]))')
+}
+
+function setup() {
+  echo "Setting up exercise three ..."
+  cf target -s sandbox
+  
+  for user in $(get_users); do
+    echo "Setting up lab for ${user} ..."
+    cf push "${user}-app" -p app -f <(cat app/manifest.yml | sed "s/@DMCF_USERNAME/${user}/g" | sed "s/@DMCF_PASSWORD/$(random_three_words)/g") --no-start &
+  done
+
+  wait
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/start?exercise=3"
+
+  for user in $(get_users); do
+    echo "Blocking ssh ${user} ..."
+    cf disable-ssh "${user}-app" &
+  done
+}
+
+function teardown() {
+  echo "Tearing down exercise three ..."
+  cf target -s sandbox
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/stop?exercise=3"
+  
+  for user in $(get_users); do
+    echo "Tearing down lab for ${user} ..."
+
+    for app in $(cf apps | egrep -i "^${user}[^\s]" | cut -f 1 -d ' '); do
+      cf delete -r -f "${app}" &
+    done
+  done
+
+  echo "Done."
+}
+
+ARG=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+
+case $ARG in
+  setup) setup;;
+  teardown) teardown;;
+  *) echo "Unknown command. Choose from: setup, teardown.";;
+esac

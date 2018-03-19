@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [[ -z $DMCF_USERS ]]; then
+  echo "You must set the \$DMCF_USERS environment variable."
+  exit 1
+fi
+
+if [[ -z $DMCF_NAMES ]]; then
+  echo "You must set the \$DMCF_NAMES environment variable (full names in same order as DMCF_USERS)."
+  exit 1
+fi
+
+function setup() {
+  echo "Setting up leaderboard ..."
+
+  cf target -s monitoring
+  cf push dmcf-leaderboard -p app -f <(cat app/manifest.yml | sed "s/@DMCF_USERS/$DMCF_USERS/g" | sed "s/@DMCF_NAMES/$DMCF_NAMES/g") &
+  cf target -s sandbox
+
+  echo "Done."
+}
+
+function teardown() {
+  echo "Tearing down leaderboard ..."
+
+  cf target -s monitoring
+  cf delete dmcf-leaderboard -r
+  cf target -s sandbox
+
+  echo "Done."
+}
+
+ARG=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+
+case $ARG in
+  setup) setup;;
+  teardown) teardown;;
+  *) echo "Unknown command. Choose from: setup, teardown.";;
+esac

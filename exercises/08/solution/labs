@@ -1,0 +1,47 @@
+#!/bin/bash
+
+if [[ -z $DMCF_USERS ]]; then
+  echo "You must set the \$DMCF_USERS environment variable."
+  exit 1
+fi
+
+function get_users() {
+  echo $DMCF_USERS | tr ',' '\n'
+}
+
+function setup() {
+  echo "Setting up exercise eight ..."
+  cf target -s sandbox
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/start?exercise=8"
+  
+  for user in $(get_users); do
+    echo "Setting up lab for ${user} ..."
+    cf push "${user}-app" -p app -f <(cat app/manifest.yml | sed "s/@DMCF_USERNAME/${user}/g") >/dev/null 2>&1 &
+  done
+}
+
+function teardown() {
+  echo "Tearing down exercise eight ..."
+  cf target -s sandbox
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/stop?exercise=8"
+  
+  for user in $(get_users); do
+    echo "Tearing down lab for ${user} ..."
+
+    for app in $(cf apps | egrep -i "^${user}[^\s]" | cut -f 1 -d ' '); do
+      cf delete -r -f "${app}" &
+    done
+  done
+
+  echo "Done."
+}
+
+ARG=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+
+case $ARG in
+  setup) setup;;
+  teardown) teardown;;
+  *) echo "Unknown command. Choose from: setup, teardown.";;
+esac

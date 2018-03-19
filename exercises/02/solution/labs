@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [[ -z $DMCF_USERS ]]; then
+  echo "You must set the \$DMCF_USERS environment variable."
+  exit 1
+fi
+
+function get_users() {
+  echo $DMCF_USERS | tr ',' '\n'
+}
+
+function teardown() {
+  echo "Tearing down exercise two ..."
+
+  curl -XPOST "https://dmcf-leaderboard.cloudapps.digital/stop?exercise=2"
+
+  echo "Done."
+}
+
+ARG=$(echo "${1}" | tr "[:upper:]" "[:lower:]")
+
+case $ARG in
+  teardown) teardown;;
+  *) echo "Unknown command. Choose from: teardown.";;
+esac
